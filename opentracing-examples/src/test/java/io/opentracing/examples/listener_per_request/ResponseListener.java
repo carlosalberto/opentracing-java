@@ -11,21 +11,25 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.opentracing.tag;
+package io.opentracing.examples.listener_per_request;
 
 import io.opentracing.Span;
 
-public class StringTag extends AbstractTag<String> {
-    public StringTag(String key) {
-        super(key);
+/**
+ * Response listener per request. Executed in a thread different from 'send' thread
+ */
+public class ResponseListener {
+
+    private final Span span;
+
+    public ResponseListener(Span span) {
+        this.span = span;
     }
 
-    @Override
-    public void set(Span span, String tagValue) {
-        span.setTag(super.key, tagValue);
-    }
-
-    public void set(Span span, StringTag tag) {
-        span.setTag(super.key, tag.key);
+    /**
+     * executed when response is received from server. Any thread.
+     */
+    public void onResponse(Object response) {
+        span.finish();
     }
 }

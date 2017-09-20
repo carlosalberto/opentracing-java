@@ -11,21 +11,10 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.opentracing.tag;
+package io.opentracing.examples.common_request_handler;
 
-import io.opentracing.Span;
+import java.util.HashMap;
 
-public class StringTag extends AbstractTag<String> {
-    public StringTag(String key) {
-        super(key);
-    }
+public class Context extends HashMap<String, Object> {
 
-    @Override
-    public void set(Span span, String tagValue) {
-        span.setTag(super.key, tagValue);
-    }
-
-    public void set(Span span, StringTag tag) {
-        span.setTag(super.key, tag.key);
-    }
 }
