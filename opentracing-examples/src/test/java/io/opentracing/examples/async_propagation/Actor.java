@@ -13,7 +13,8 @@
  */
 package io.opentracing.examples.async_propagation;
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
+import io.opentracing.Span;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
 
@@ -43,17 +44,17 @@ public class Actor implements AutoCloseable {
   }
 
   public void tell(final String message) {
-    final ActiveSpan.Continuation continuation = tracer.activeSpan().capture();
+    final Span span = tracer.scopeManager().active().span();
     phaser.register();
     executor.submit(
         new Runnable() {
           @Override
           public void run() {
-            try (ActiveSpan parent = continuation.activate()) {
-              try (ActiveSpan child =
+            try (Scope parent = tracer.scopeManager().activate(span)) {
+              try (Scope child =
                   tracer
                       .buildSpan("sent")
-                      .asChildOf(parent)
+                      .asChildOf(parent.span())
                       .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER)
                       .startActive()) {
                 phaser.arriveAndAwaitAdvance(); // child tracer started
@@ -70,18 +71,18 @@ public class Actor implements AutoCloseable {
   }
 
   public Future<String> ask(final String message) {
-    final ActiveSpan.Continuation continuation = tracer.activeSpan().capture();
+    final Span span = tracer.scopeManager().active().span();
     phaser.register();
     Future<String> future =
         executor.submit(
             new Callable<String>() {
               @Override
               public String call() throws Exception {
-                try (ActiveSpan parent = continuation.activate()) {
-                  try (ActiveSpan child =
+                try (Scope parent = tracer.scopeManager().activate(span)) {
+                  try (Scope child =
                       tracer
                           .buildSpan("sent")
-                          .asChildOf(parent)
+                          .asChildOf(parent.span())
                           .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CONSUMER)
                           .startActive()) {
                     phaser.arriveAndAwaitAdvance(); // child tracer started

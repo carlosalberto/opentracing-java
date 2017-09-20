@@ -13,12 +13,14 @@
  */
 package io.opentracing.examples.async_propagation;
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
+import io.opentracing.examples.AutoFinishScope;
+import io.opentracing.examples.AutoFinishScopeManager;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.mock.MockTracer.Propagator;
 import io.opentracing.tag.Tags;
-import io.opentracing.util.ThreadLocalActiveSpanSource;
+import io.opentracing.util.ThreadLocalScopeManager;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,7 +51,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class AsyncPropagationTest {
 
   private final MockTracer tracer =
-      new MockTracer(new ThreadLocalActiveSpanSource(), Propagator.TEXT_MAP);
+      new MockTracer(new ThreadLocalScopeManager(), Propagator.TEXT_MAP);
+  private final MockTracer autoTracer =
+      new MockTracer(new AutoFinishScopeManager(), Propagator.TEXT_MAP);
   private Phaser phaser;
 
   @Before
@@ -61,12 +65,12 @@ public class AsyncPropagationTest {
   public void testActorTell() {
     try (Actor actor = new Actor(tracer, phaser)) {
       phaser.register();
-      try (ActiveSpan parent =
+      try (Scope parent =
           tracer
               .buildSpan("actorTell")
               .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER)
               .withTag(Tags.COMPONENT.getKey(), "example-actor")
-              .startActive()) {
+              .startActive(false)) {
         actor.tell("my message");
       }
       phaser.arriveAndAwaitAdvance(); // child tracer started
@@ -88,7 +92,7 @@ public class AsyncPropagationTest {
           .isEqualTo(finished.get(1).context().traceId());
       assertThat(getOneByTag(finished, Tags.SPAN_KIND, Tags.SPAN_KIND_CONSUMER)).isNotNull();
       assertThat(getOneByTag(finished, Tags.SPAN_KIND, Tags.SPAN_KIND_PRODUCER)).isNotNull();
-      assertThat(tracer.activeSpan()).isNull();
+      assertThat(tracer.scopeManager().active()).isNull();
     }
   }
 
@@ -97,12 +101,12 @@ public class AsyncPropagationTest {
     try (Actor actor = new Actor(tracer, phaser)) {
       phaser.register();
       Future<String> future;
-      try (ActiveSpan parent =
+      try (Scope parent =
           tracer
               .buildSpan("actorAsk")
               .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_PRODUCER)
               .withTag(Tags.COMPONENT.getKey(), "example-actor")
-              .startActive()) {
+              .startActive(false)) {
         future = actor.ask("my message");
       }
       phaser.arriveAndAwaitAdvance(); // child tracer started
@@ -126,7 +130,7 @@ public class AsyncPropagationTest {
           .isEqualTo(finished.get(1).context().traceId());
       assertThat(getOneByTag(finished, Tags.SPAN_KIND, Tags.SPAN_KIND_CONSUMER)).isNotNull();
       assertThat(getOneByTag(finished, Tags.SPAN_KIND, Tags.SPAN_KIND_PRODUCER)).isNotNull();
-      assertThat(tracer.activeSpan()).isNull();
+      assertThat(tracer.scopeManager().active()).isNull();
     }
   }
 
@@ -136,13 +140,13 @@ public class AsyncPropagationTest {
     final AtomicReference<String> successResult = new AtomicReference<>();
     final AtomicReference<Throwable> errorResult = new AtomicReference<>();
     try (PromiseContext context = new PromiseContext(phaser, 2)) {
-      try (ActiveSpan parent =
-          tracer
+      try (Scope parent =
+          autoTracer
               .buildSpan("promises")
               .withTag(Tags.COMPONENT.getKey(), "example-promises")
               .startActive()) {
 
-        Promise<String> promise1 = new Promise<>(context, tracer);
+        Promise<String> promise1 = new Promise<>(context, autoTracer);
 
         promise1.onSuccess(
             new Promise.SuccessCallback<String>() {
@@ -153,7 +157,7 @@ public class AsyncPropagationTest {
               }
             });
 
-        Promise promise2 = new Promise(context, tracer);
+        Promise promise2 = new Promise(context, autoTracer);
 
         promise2.onError(
             new Promise.ErrorCallback() {
@@ -163,7 +167,7 @@ public class AsyncPropagationTest {
                 phaser.arriveAndAwaitAdvance(); // result set
               }
             });
-        assertThat(tracer.finishedSpans().size()).isEqualTo(0);
+        assertThat(autoTracer.finishedSpans().size()).isEqualTo(0);
         promise1.success("success!");
         promise2.error(new Exception("some error."));
       }
@@ -173,7 +177,7 @@ public class AsyncPropagationTest {
       assertThat(errorResult.get()).hasMessage("some error.");
 
       phaser.arriveAndAwaitAdvance(); // wait for traces to be reported
-      List<MockSpan> finished = tracer.finishedSpans();
+      List<MockSpan> finished = autoTracer.finishedSpans();
       assertThat(finished.size()).isEqualTo(3);
       assertThat(getOneByTag(finished, Tags.COMPONENT, "example-promises")).isNotNull();
       assertThat(getOneByTag(finished, Tags.COMPONENT, "example-promises").parentId()).isEqualTo(0);

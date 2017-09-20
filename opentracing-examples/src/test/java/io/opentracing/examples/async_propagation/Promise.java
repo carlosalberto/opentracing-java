@@ -13,7 +13,9 @@
  */
 package io.opentracing.examples.async_propagation;
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
+import io.opentracing.examples.AutoFinishScope;
+import io.opentracing.examples.AutoFinishScope.Continuation;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
 
@@ -24,7 +26,7 @@ import java.util.LinkedList;
 public class Promise<T> {
   private final PromiseContext context;
   private final MockTracer tracer;
-  private final ActiveSpan activeSpan;
+  private final Scope scope;
 
   private final Collection<Pair<SuccessCallback<T>>> successCallbacks = new LinkedList<>();
   private final Collection<Pair<ErrorCallback>> errorCallbacks = new LinkedList<>();
@@ -34,16 +36,16 @@ public class Promise<T> {
 
     // Passed along here for testing. Normally should be referenced via GlobalTracer.get().
     this.tracer = tracer;
-    activeSpan = tracer.activeSpan();
+    scope = tracer.scopeManager().active();
   }
 
   public void onSuccess(SuccessCallback<T> successCallback) {
-    ActiveSpan.Continuation capture = activeSpan.capture();
+    Continuation capture = ((AutoFinishScope)scope).capture();
     successCallbacks.add(new Pair<>(capture, successCallback));
   }
 
   public void onError(ErrorCallback errorCallback) {
-    ActiveSpan.Continuation capture = activeSpan.capture();
+    Continuation capture = ((AutoFinishScope)scope).capture();
     errorCallbacks.add(new Pair<>(capture, errorCallback));
   }
 
@@ -53,12 +55,12 @@ public class Promise<T> {
           new Runnable() {
             @Override
             public void run() {
-              try (ActiveSpan parent = pair.capture.activate()) {
-                try (ActiveSpan child =
+              try (Scope parent = pair.capture.activate()) {
+                try (Scope child =
                     tracer
                         .buildSpan("success")
                         .withTag(Tags.COMPONENT.getKey(), "success")
-                        .asChildOf(parent)
+                        .asChildOf(parent.span())
                         .startActive()) {
                   pair.callback.accept(result);
                 }
@@ -75,12 +77,12 @@ public class Promise<T> {
           new Runnable() {
             @Override
             public void run() {
-              try (ActiveSpan parent = pair.capture.activate()) {
-                try (ActiveSpan child =
+              try (Scope parent = pair.capture.activate()) {
+                try (Scope child =
                     tracer
                         .buildSpan("error")
                         .withTag(Tags.COMPONENT.getKey(), "error")
-                        .asChildOf(parent)
+                        .asChildOf(parent.span())
                         .startActive()) {
                   pair.callback.accept(error);
                 }
@@ -103,10 +105,10 @@ public class Promise<T> {
 
   private class Pair<C> {
 
-    final ActiveSpan.Continuation capture;
+    final Continuation capture;
     final C callback;
 
-    public Pair(ActiveSpan.Continuation capture, C callback) {
+    public Pair(Continuation capture, C callback) {
       this.capture = capture;
       this.callback = callback;
     }
