@@ -11,15 +11,15 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.opentracing.util.v_030;
+package io.opentracing.v_030.util;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import io.opentracing.SpanContext;
 import io.opentracing.v_030.ActiveSpan;
 import io.opentracing.v_030.ActiveSpanSource;
 import io.opentracing.v_030.Span;
+import io.opentracing.v_030.SpanContext;
 import io.opentracing.v_030.Tracer;
 
 /**

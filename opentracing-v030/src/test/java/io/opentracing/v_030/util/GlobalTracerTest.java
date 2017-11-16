@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.opentracing.util.v_030;
+package io.opentracing.v_030.util;
 
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -26,11 +26,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import io.opentracing.SpanContext;
 import io.opentracing.propagation.Format;
+import io.opentracing.v_030.SpanContext;
 import io.opentracing.v_030.Tracer;
-import io.opentracing.noop.v_030.NoopSpanBuilder;
-import io.opentracing.noop.v_030.NoopTracerFactory;
+import io.opentracing.v_030.noop.NoopSpanBuilder;
+import io.opentracing.v_030.noop.NoopTracerFactory;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
