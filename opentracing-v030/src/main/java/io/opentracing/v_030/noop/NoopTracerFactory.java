@@ -11,26 +11,14 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.opentracing.noop.v_030;
+package io.opentracing.v_030.noop;
 
-import io.opentracing.v_030.SpanContext;
-
-import java.util.Collections;
-import java.util.Map;
-
-
-public interface NoopSpanContext extends SpanContext {
-}
-
-final class NoopSpanContextImpl implements NoopSpanContext {
-    static final NoopSpanContextImpl INSTANCE = new NoopSpanContextImpl();
-
-    @Override
-    public Iterable<Map.Entry<String, String>> baggageItems() {
-        return Collections.emptyList();
+public final class NoopTracerFactory {
+    
+    public static NoopTracer create() {
+        return NoopTracerImpl.INSTANCE;
     }
 
-    @Override
-    public String toString() { return NoopSpanContext.class.getSimpleName(); }
-
+    private NoopTracerFactory() {}
 }
+

@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.opentracing.mock.v_030;
+package io.opentracing.v_030.mock;
 
 import io.opentracing.References;
 import io.opentracing.propagation.Format;
@@ -22,8 +22,8 @@ import io.opentracing.v_030.BaseSpan;
 import io.opentracing.v_030.Span;
 import io.opentracing.v_030.SpanContext;
 import io.opentracing.v_030.Tracer;
-import io.opentracing.noop.v_030.NoopActiveSpanSource;
-import io.opentracing.util.v_030.ThreadLocalActiveSpanSource;
+import io.opentracing.v_030.noop.NoopActiveSpanSource;
+import io.opentracing.v_030.util.ThreadLocalActiveSpanSource;
 
 import java.util.ArrayList;
 import java.util.HashMap;
