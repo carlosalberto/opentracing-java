@@ -11,14 +11,26 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.opentracing.v_030;
+package io.opentracing;
 
 import java.util.Map;
 
 /**
  * SpanContext represents Span state that must propagate to descendant Spans and across process boundaries.
- * This interface is the same as io.opentracing.SpanContext, as is provided under this package
- * in order to keep API uniformity.
+ *
+ * SpanContext is logically divided into two pieces: (1) the user-level "Baggage" that propagates across Span
+ * boundaries and (2) any Tracer-implementation-specific fields that are needed to identify or otherwise contextualize
+ * the associated Span instance (e.g., a &lt;trace_id, span_id, sampled&gt; tuple).
+ *
+ * @see Span#setBaggageItem(String, String)
+ * @see Span#getBaggageItem(String)
  */
-public interface SpanContext extends io.opentracing.SpanContext {
+public interface SpanContext {
+    /**
+     * @return all zero or more baggage items propagating along with the associated Span
+     *
+     * @see Span#setBaggageItem(String, String)
+     * @see Span#getBaggageItem(String)
+     */
+    Iterable<Map.Entry<String, String>> baggageItems();
 }
