@@ -103,7 +103,7 @@ public final class TracerShimTest {
     }
 
     @Test
-    public void injectExtract() {
+    public void injectExtractTextMap() {
         Map<String, String> injectMap = new HashMap<String, String>();
 
         Span span = shim.buildSpan("parent").startManual();
@@ -111,6 +111,22 @@ public final class TracerShimTest {
         shim.inject(span.context(), Format.Builtin.TEXT_MAP, new TextMapInjectAdapter(injectMap));
 
         SpanContext extract = shim.extract(Format.Builtin.TEXT_MAP, new TextMapExtractAdapter(injectMap));
+        shim.buildSpan("child").asChildOf(extract).startManual().finish();
+
+        List<MockSpan> finishedSpans = mockTracer.finishedSpans();
+        assertEquals(2, finishedSpans.size());
+        assertEquals(finishedSpans.get(0).context().traceId(), finishedSpans.get(1).context().traceId());
+    }
+
+    @Test
+    public void injectExtractHttp() {
+        Map<String, String> injectMap = new HashMap<String, String>();
+
+        Span span = shim.buildSpan("parent").startManual();
+        span.finish();
+        shim.inject(span.context(), Format.Builtin.HTTP_HEADERS, new TextMapInjectAdapter(injectMap));
+
+        SpanContext extract = shim.extract(Format.Builtin.HTTP_HEADERS, new TextMapExtractAdapter(injectMap));
         shim.buildSpan("child").asChildOf(extract).startManual().finish();
 
         List<MockSpan> finishedSpans = mockTracer.finishedSpans();
