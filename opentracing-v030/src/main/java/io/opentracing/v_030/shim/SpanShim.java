@@ -19,10 +19,12 @@ import io.opentracing.v_030.Span;
 import java.util.Map;
 
 class SpanShim implements Span, SpanWrapper {
-    io.opentracing.Span span;
+    final io.opentracing.Span span;
+    final SpanContext context;
 
     public SpanShim(io.opentracing.Span span) {
         this.span = span;
+        this.context = new SpanContextShim(span().context());
     }
 
     @Override
@@ -42,7 +44,7 @@ class SpanShim implements Span, SpanWrapper {
 
     @Override
     public SpanContext context() {
-        return span.context();
+        return context;
     }
 
     @Override

@@ -11,12 +11,12 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.opentracing.tag.v_030;
+package io.opentracing.v_030.tag;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import io.opentracing.Span;
+import io.opentracing.v_030.Span;
 import org.junit.Test;
 
 public class StringTagTest {

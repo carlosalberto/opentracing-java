@@ -13,11 +13,11 @@
  */
 package io.opentracing.v_030.noop;
 
-import io.opentracing.propagation.Format;
 import io.opentracing.v_030.ActiveSpan;
 import io.opentracing.v_030.Span;
 import io.opentracing.v_030.SpanContext;
 import io.opentracing.v_030.Tracer;
+import io.opentracing.v_030.propagation.Format;
 
 public interface NoopTracer extends Tracer {
 }

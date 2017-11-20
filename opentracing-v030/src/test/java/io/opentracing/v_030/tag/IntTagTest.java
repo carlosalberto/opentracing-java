@@ -13,7 +13,7 @@
  */
 package io.opentracing.v_030.tag;
 
-import io.opentracing.Span;
+import io.opentracing.v_030.Span;
 import org.junit.Test;
 
 import static org.mockito.Mockito.mock;

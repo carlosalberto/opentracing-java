@@ -14,16 +14,18 @@
 package io.opentracing.v_030.shim;
 
 import io.opentracing.Scope;
-import io.opentracing.v_030.SpanContext; // uh, fascinating...
+import io.opentracing.v_030.SpanContext;
 import io.opentracing.v_030.ActiveSpan;
 
 import java.util.Map;
 
 class ActiveSpanShim implements ActiveSpan, SpanWrapper {
-    Scope scope;
+    final Scope scope;
+    final SpanContext context;
 
     public ActiveSpanShim(Scope scope) {
         this.scope = scope;
+        this.context = new SpanContextShim(scope.span().context());
     }
 
     protected Scope scope() {
@@ -52,7 +54,7 @@ class ActiveSpanShim implements ActiveSpan, SpanWrapper {
 
     @Override
     public SpanContext context() {
-        return scope.span().context();
+        return context;
     }
 
     @Override

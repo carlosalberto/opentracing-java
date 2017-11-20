@@ -11,24 +11,31 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.opentracing.v_030.tag;
+package io.opentracing.v_030.shim;
 
-import io.opentracing.v_030.Span;
-import org.junit.Test;
+import io.opentracing.v_030.propagation.TextMap;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import java.util.Iterator;
+import java.util.Map;
 
-public class BooleanTagTest {
-    @Test
-    public void testSetBoolean() {
-        Boolean value = true;
-        String key = "expected.key";
-        Span span = mock(Span.class);
+class TextMapUpstreamShim implements io.opentracing.propagation.TextMap {
+    final TextMap textMap;
 
-        BooleanTag tag = new BooleanTag(key);
-        tag.set(span, value);
+    public TextMapUpstreamShim(TextMap textMap) {
+        this.textMap = textMap;
+    }
 
-        verify(span).setTag(key, value);
+    public TextMap textMap() {
+        return textMap;
+    }
+
+    @Override
+    public Iterator<Map.Entry<String, String>> iterator() {
+        return textMap.iterator();
+    }
+
+    @Override
+    public void put(String key, String value) {
+        textMap.put(key, value);
     }
 }

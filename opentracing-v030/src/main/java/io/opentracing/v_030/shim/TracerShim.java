@@ -15,18 +15,27 @@ package io.opentracing.v_030.shim;
 
 import io.opentracing.ScopeManager;
 import io.opentracing.Scope;
-import io.opentracing.propagation.Format;
 import io.opentracing.v_030.ActiveSpan;
 import io.opentracing.v_030.BaseSpan;
 import io.opentracing.v_030.Span;
 import io.opentracing.v_030.SpanContext;
 import io.opentracing.v_030.Tracer;
+import io.opentracing.v_030.propagation.Format;
+
+import java.util.Map;
 
 public class TracerShim implements Tracer {
-    io.opentracing.Tracer tracer;
+    final io.opentracing.Tracer tracer;
 
     public TracerShim(io.opentracing.Tracer tracer) {
+        checkArgumentNotNull(tracer, "tracer");
+
         this.tracer = tracer;
+    }
+
+    void checkArgumentNotNull(Object value, String errorMessage) {
+        if (value == null)
+            throw new IllegalArgumentException(errorMessage);
     }
 
     protected ActiveSpanShim createActiveSpanShim(Scope scope) {
@@ -43,6 +52,8 @@ public class TracerShim implements Tracer {
 
     @Override
     public ActiveSpan makeActive(Span span) {
+        checkArgumentNotNull(span, "span");
+
         io.opentracing.Span wrappedSpan = ((SpanWrapper)span).span();
         return createActiveSpanShim(tracer.scopeManager().activate(wrappedSpan));
     }
@@ -54,12 +65,18 @@ public class TracerShim implements Tracer {
 
     @Override
     public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
-        tracer.inject(spanContext, format, carrier);
+        checkArgumentNotNull(spanContext, "spanContext");
+
+        tracer.inject(((SpanContextShim)spanContext).context(),
+                FormatConverter.toUpstreamFormat(format),
+                FormatConverter.toUpstreamCarrier(format, carrier));
     }
 
     @Override
     public <C> SpanContext extract(Format<C> format, C carrier) {
-        return tracer.extract(format, carrier);
+        io.opentracing.SpanContext context = tracer.extract(FormatConverter.toUpstreamFormat(format),
+                FormatConverter.toUpstreamCarrier(format, carrier));
+        return new SpanContextShim(context);
     }
 
     private final class SpanBuilderShim implements Tracer.SpanBuilder {
@@ -71,19 +88,25 @@ public class TracerShim implements Tracer {
 
         @Override
         public SpanBuilderShim asChildOf(SpanContext parent) {
-            builder.asChildOf(parent);
+            checkArgumentNotNull(parent, "parent");
+
+            builder.asChildOf(((SpanContextShim)parent).context());
             return this;
         }
 
         @Override
         public SpanBuilderShim asChildOf(BaseSpan<?> parent) {
+            checkArgumentNotNull(parent, "parent");
+
             builder.asChildOf(((SpanWrapper)parent).span());
             return this;
         }
 
         @Override
         public SpanBuilderShim addReference(String referenceType, SpanContext referencedContext) {
-            builder.addReference(referenceType, referencedContext);
+            checkArgumentNotNull(referencedContext, "referencedContext");
+
+            builder.addReference(referenceType, ((SpanContextShim)referencedContext).context());
             return this;
         }
 

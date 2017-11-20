@@ -13,9 +13,9 @@
  */
 package io.opentracing.v_030.mock;
 
-import io.opentracing.References;
-import io.opentracing.propagation.Format;
-import io.opentracing.propagation.TextMap;
+import io.opentracing.v_030.References;
+import io.opentracing.v_030.propagation.Format;
+import io.opentracing.v_030.propagation.TextMap;
 import io.opentracing.v_030.ActiveSpan;
 import io.opentracing.v_030.ActiveSpanSource;
 import io.opentracing.v_030.BaseSpan;

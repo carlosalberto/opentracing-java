@@ -13,7 +13,7 @@
  */
 package io.opentracing.v_030;
 
-import io.opentracing.propagation.Format;
+import io.opentracing.v_030.propagation.Format;
 
 /**
  * Tracer is a simple, thin interface for Span creation and propagation across arbitrary transports.
