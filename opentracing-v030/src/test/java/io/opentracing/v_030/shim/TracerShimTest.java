@@ -15,6 +15,7 @@ package io.opentracing.v_030.shim;
 
 import org.junit.Before;
 import org.junit.Test;
+import io.opentracing.Scope;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.mock.MockTracer.Propagator;
@@ -56,10 +57,14 @@ public final class TracerShimTest {
 
     @Test
     public void activeSpan() {
-        try (ActiveSpan span = shim.buildSpan("one").startActive()) {
+        ActiveSpan span = null;
+        try {
+            span = shim.buildSpan("one").startActive();
             assertNotNull(span);
             assertNotNull(shim.activeSpan());
             assertEquals(0, mockTracer.finishedSpans().size());
+        } finally {
+            span.deactivate();
         }
 
         assertNull(shim.activeSpan());
@@ -69,8 +74,12 @@ public final class TracerShimTest {
 
     @Test
     public void activeSpanOnTheSide() {
-        try (io.opentracing.Scope scope = mockTracer.buildSpan("one").startActive()) {
+        Scope scope = null;
+        try {
+            scope = mockTracer.buildSpan("one").startActive();
             assertNotNull(shim.activeSpan());
+        } finally {
+            scope.close();
         }
 
         assertNull(shim.activeSpan());
@@ -92,10 +101,14 @@ public final class TracerShimTest {
     @Test
     public void makeActive() {
         Span span = shim.buildSpan("one").startManual();
-        try (ActiveSpan active = shim.makeActive(span)) {
+        ActiveSpan active = null;
+        try {
+            active = shim.makeActive(span);
             assertNotNull(active);
             assertNotNull(shim.activeSpan());
             assertEquals(0, mockTracer.finishedSpans().size());
+        } finally {
+            active.deactivate();
         }
 
         assertNull(shim.activeSpan());
@@ -150,11 +163,22 @@ public final class TracerShimTest {
 
     @Test
     public void builderAsChildOfActiveSpan() {
-        try (ActiveSpan parentSpan = shim.buildSpan("parent").startActive()) {
-            try (ActiveSpan childSpan = shim.buildSpan("child").startActive()) {
-                try (ActiveSpan childSpan2 = shim.buildSpan("child2").asChildOf(parentSpan).startActive()) {
+        ActiveSpan parentSpan, childSpan, childSpan2;
+        parentSpan = childSpan = childSpan2 = null;
+        try {
+            parentSpan = shim.buildSpan("parent").startActive();
+            try {
+                childSpan = shim.buildSpan("child").startActive();
+                try {
+                    childSpan2 = shim.buildSpan("child2").asChildOf(parentSpan).startActive();
+                } finally {
+                    childSpan2.deactivate();
                 }
+            } finally {
+                childSpan.deactivate();
             }
+        } finally {
+            parentSpan.deactivate();
         }
 
         List<MockSpan> spans = mockTracer.finishedSpans();
@@ -181,9 +205,17 @@ public final class TracerShimTest {
 
     @Test
     public void builderIgnoreActiveSpan() {
-        try (ActiveSpan parentSpan = shim.buildSpan("one").startActive()) {
-            try (ActiveSpan childSpan = shim.buildSpan("two").ignoreActiveSpan().startActive()) {
+        ActiveSpan parentSpan, childSpan;
+        parentSpan = childSpan = null;
+        try {
+            parentSpan = shim.buildSpan("one").startActive();
+            try {
+                childSpan = shim.buildSpan("two").ignoreActiveSpan().startActive();
+            } finally {
+                childSpan.deactivate();
             }
+        } finally {
+            parentSpan.deactivate();
         }
 
         List<MockSpan> spans = mockTracer.finishedSpans();
