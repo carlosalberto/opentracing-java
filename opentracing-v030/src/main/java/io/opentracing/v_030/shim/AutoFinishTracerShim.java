@@ -17,7 +17,9 @@ import io.opentracing.Scope;
 import io.opentracing.ScopeManager;
 import io.opentracing.SpanContext;
 import io.opentracing.propagation.Format;
+import io.opentracing.util.AutoFinishScope;
 import io.opentracing.util.AutoFinishScopeManager;
+import io.opentracing.v_030.ActiveSpan;
 
 public class AutoFinishTracerShim extends TracerShim {
     public AutoFinishTracerShim(io.opentracing.Tracer tracer) {
@@ -30,5 +32,29 @@ public class AutoFinishTracerShim extends TracerShim {
     @Override
     protected ActiveSpanShim createActiveSpanShim(Scope scope) {
         return new AutoFinishActiveSpanShim(scope);
+    }
+
+    final static class AutoFinishActiveSpanShim extends ActiveSpanShim {
+        public AutoFinishActiveSpanShim(Scope scope) {
+            super(scope);
+        }
+
+        @Override
+        public Continuation capture() {
+            return new Continuation(((AutoFinishScope)scope()).capture());
+        }
+
+        private final class Continuation implements ActiveSpan.Continuation {
+            AutoFinishScope.Continuation continuation;
+
+            Continuation(AutoFinishScope.Continuation continuation) {
+                this.continuation = continuation;
+            }
+
+            @Override
+            public ActiveSpanShim activate() {
+                return new AutoFinishActiveSpanShim(continuation.activate());
+            }
+        }
     }
 }
