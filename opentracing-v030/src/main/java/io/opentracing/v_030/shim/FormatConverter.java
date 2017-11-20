@@ -21,21 +21,6 @@ import io.opentracing.v_030.propagation.TextMap;
 final class FormatConverter {
     private FormatConverter() {}
 
-    public static Format toV030Format(io.opentracing.propagation.Format format) {
-        if (format == null)
-            return null; // Bail out early.
-
-        if (format == io.opentracing.propagation.Format.Builtin.TEXT_MAP)
-            return Format.Builtin.TEXT_MAP;
-        if (format == io.opentracing.propagation.Format.Builtin.HTTP_HEADERS)
-            return Format.Builtin.HTTP_HEADERS;
-        if (format == io.opentracing.propagation.Format.Builtin.BINARY)
-            return Format.Builtin.BINARY;
-
-        // TODO - Have a shim here.
-        return null;
-    }
-
     public static io.opentracing.propagation.Format toUpstreamFormat(Format format) {
         if (format == null)
             return null; // Bail out early.
@@ -47,8 +32,7 @@ final class FormatConverter {
         if (format == Format.Builtin.BINARY)
             return io.opentracing.propagation.Format.Builtin.BINARY;
 
-        // TODO - Have a shim here.
-        return null;
+        throw new UnsupportedOperationException("Format not supported");
     }
 
     public static <C> Object toUpstreamCarrier(Format format, C carrier) {
