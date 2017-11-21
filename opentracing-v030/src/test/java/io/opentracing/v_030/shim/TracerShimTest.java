@@ -15,24 +15,18 @@ package io.opentracing.v_030.shim;
 
 import org.junit.Before;
 import org.junit.Test;
-import io.opentracing.Scope;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.mock.MockTracer.Propagator;
+import io.opentracing.util.AutoFinishScopeManager;
 import io.opentracing.util.ThreadLocalScopeManager;
 import io.opentracing.v_030.ActiveSpan;
-import io.opentracing.v_030.References;
 import io.opentracing.v_030.Span;
 import io.opentracing.v_030.SpanContext;
 import io.opentracing.v_030.Tracer;
-import io.opentracing.v_030.propagation.Format;
-import io.opentracing.v_030.propagation.TextMapExtractAdapter;
-import io.opentracing.v_030.propagation.TextMapInjectAdapter;
-import io.opentracing.v_030.shim.TracerShim;
 
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -40,7 +34,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 public final class TracerShimTest {
-    private final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
+    private final MockTracer mockTracer = new MockTracer(new AutoFinishScopeManager(),
             Propagator.TEXT_MAP);
     private Tracer shim;
 
@@ -55,8 +49,15 @@ public final class TracerShimTest {
         new TracerShim(null);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void ctorUnsupportedScopeManager() {
+        MockTracer tracer = new MockTracer(new ThreadLocalScopeManager(),
+                Propagator.TEXT_MAP);
+        new TracerShim(tracer);
+    }
+
     @Test
-    public void activeSpan() {
+    public void simpleSpan() {
         ActiveSpan span = null;
         try {
             span = shim.buildSpan("one").startActive();
@@ -69,209 +70,46 @@ public final class TracerShimTest {
 
         assertNull(shim.activeSpan());
         assertEquals(1, mockTracer.finishedSpans().size());
-        assertEquals("one", mockTracer.finishedSpans().get(0).operationName());
     }
 
     @Test
-    public void activeSpanOnTheSide() {
-        Scope scope = null;
+    public void captureSpan() {
+        int captureCount = 3;
+        ActiveSpan.Continuation continuations[] = new ActiveSpan.Continuation[captureCount];
+
+        ActiveSpan span = null;
         try {
-            scope = mockTracer.buildSpan("one").startActive();
-            assertNotNull(shim.activeSpan());
-        } finally {
-            scope.close();
-        }
-
-        assertNull(shim.activeSpan());
-    }
-
-    @Test
-    public void activeSpanNone() {
-        assertNull(shim.activeSpan());
-
-        Span span = shim.buildSpan("one").startManual();
-        assertNull(shim.activeSpan());
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void makeActiveNull() {
-        shim.makeActive(null);
-    }
-
-    @Test
-    public void makeActive() {
-        Span span = shim.buildSpan("one").startManual();
-        ActiveSpan active = null;
-        try {
-            active = shim.makeActive(span);
-            assertNotNull(active);
+            span = shim.buildSpan("one").startActive();
             assertNotNull(shim.activeSpan());
             assertEquals(0, mockTracer.finishedSpans().size());
+
+            for (int i = 0; i < captureCount; i++) {
+                ActiveSpan.Continuation cont = span.capture();
+                continuations[i] = cont;
+                assertNotNull(cont);
+            }
         } finally {
-            active.deactivate();
+            span.deactivate();
+        }
+
+        for (int i = 0; i < captureCount; i++) {
+            assertNull(shim.activeSpan());
+            assertEquals(0, mockTracer.finishedSpans().size());
+
+            try {
+                continuations[i].activate();
+                assertNotNull(shim.activeSpan());
+                shim.activeSpan().setTag(Integer.toString(i), "value");
+
+            } finally {
+                shim.activeSpan().deactivate();
+            }
         }
 
         assertNull(shim.activeSpan());
         assertEquals(1, mockTracer.finishedSpans().size());
-    }
 
-    @Test
-    public void injectExtractTextMap() {
-        Map<String, String> injectMap = new HashMap<String, String>();
-
-        Span span = shim.buildSpan("parent").startManual();
-        span.finish();
-        shim.inject(span.context(), Format.Builtin.TEXT_MAP, new TextMapInjectAdapter(injectMap));
-
-        SpanContext extract = shim.extract(Format.Builtin.TEXT_MAP, new TextMapExtractAdapter(injectMap));
-        shim.buildSpan("child").asChildOf(extract).startManual().finish();
-
-        List<MockSpan> finishedSpans = mockTracer.finishedSpans();
-        assertEquals(2, finishedSpans.size());
-        assertEquals(finishedSpans.get(0).context().traceId(), finishedSpans.get(1).context().traceId());
-    }
-
-    @Test
-    public void injectExtractHttp() {
-        Map<String, String> injectMap = new HashMap<String, String>();
-
-        Span span = shim.buildSpan("parent").startManual();
-        span.finish();
-        shim.inject(span.context(), Format.Builtin.HTTP_HEADERS, new TextMapInjectAdapter(injectMap));
-
-        SpanContext extract = shim.extract(Format.Builtin.HTTP_HEADERS, new TextMapExtractAdapter(injectMap));
-        shim.buildSpan("child").asChildOf(extract).startManual().finish();
-
-        List<MockSpan> finishedSpans = mockTracer.finishedSpans();
-        assertEquals(2, finishedSpans.size());
-        assertEquals(finishedSpans.get(0).context().traceId(), finishedSpans.get(1).context().traceId());
-    }
-
-    @Test
-    public void builderAsChildOfSpan() {
-        Span parentSpan = shim.buildSpan("parent").startManual();
-        Span childSpan = shim.buildSpan("child").asChildOf(parentSpan).startManual();
-        childSpan.finish();
-        parentSpan.finish();
-
-        List<MockSpan> spans = mockTracer.finishedSpans();
-        assertEquals(2, spans.size());
-        assertEquals("child", spans.get(0).operationName());
-        assertEquals("parent", spans.get(1).operationName());
-        assertEquals(spans.get(0).parentId(), spans.get(1).context().spanId());
-    }
-
-    @Test
-    public void builderAsChildOfActiveSpan() {
-        ActiveSpan parentSpan, childSpan, childSpan2;
-        parentSpan = childSpan = childSpan2 = null;
-        try {
-            parentSpan = shim.buildSpan("parent").startActive();
-            try {
-                childSpan = shim.buildSpan("child").startActive();
-                try {
-                    childSpan2 = shim.buildSpan("child2").asChildOf(parentSpan).startActive();
-                } finally {
-                    childSpan2.deactivate();
-                }
-            } finally {
-                childSpan.deactivate();
-            }
-        } finally {
-            parentSpan.deactivate();
-        }
-
-        List<MockSpan> spans = mockTracer.finishedSpans();
-        assertEquals(3, spans.size());
-        assertEquals("child2", spans.get(0).operationName());
-        assertEquals("child", spans.get(1).operationName());
-        assertEquals("parent", spans.get(2).operationName());
-        assertEquals(spans.get(0).parentId(), spans.get(2).context().spanId());
-    }
-
-    @Test
-    public void builderAsChildOfContext() {
-        Span parentSpan = shim.buildSpan("parent").startManual();
-        Span childSpan = shim.buildSpan("child").asChildOf(parentSpan.context()).startManual();
-        childSpan.finish();
-        parentSpan.finish();
-
-        List<MockSpan> spans = mockTracer.finishedSpans();
-        assertEquals(2, spans.size());
-        assertEquals("child", spans.get(0).operationName());
-        assertEquals("parent", spans.get(1).operationName());
-        assertEquals(spans.get(0).parentId(), spans.get(1).context().spanId());
-    }
-
-    @Test
-    public void builderIgnoreActiveSpan() {
-        ActiveSpan parentSpan, childSpan;
-        parentSpan = childSpan = null;
-        try {
-            parentSpan = shim.buildSpan("one").startActive();
-            try {
-                childSpan = shim.buildSpan("two").ignoreActiveSpan().startActive();
-            } finally {
-                childSpan.deactivate();
-            }
-        } finally {
-            parentSpan.deactivate();
-        }
-
-        List<MockSpan> spans = mockTracer.finishedSpans();
-        assertEquals(2, spans.size());
-        assertEquals("two", spans.get(0).operationName());
-        assertEquals("one", spans.get(1).operationName());
-        assertNotEquals(spans.get(0).context().traceId(), spans.get(1).context().traceId());
-    }
-
-    @Test
-    public void builderAddReference() {
-        Span parentSpan = shim.buildSpan("parent").startManual();
-        Span childSpan = shim.buildSpan("child").addReference(References.CHILD_OF, parentSpan.context()).startManual();
-        childSpan.finish();
-        parentSpan.finish();
-
-        List<MockSpan> spans = mockTracer.finishedSpans();
-        assertEquals(2, spans.size());
-        assertEquals("child", spans.get(0).operationName());
-        assertEquals("parent", spans.get(1).operationName());
-        assertEquals(spans.get(0).parentId(), spans.get(1).context().spanId());
-    }
-
-    @Test
-    public void builderWithTag() {
-        shim.buildSpan("one")
-            .withTag("string", "string")
-            .withTag("boolean", true)
-            .withTag("number", 13)
-            .startManual()
-            .finish();
-
-        assertEquals(1, mockTracer.finishedSpans().size());
-        
         Map<String, Object> tags = mockTracer.finishedSpans().get(0).tags();
-        assertEquals("string", tags.get("string"));
-        assertEquals(true, tags.get("boolean"));
-        assertEquals(13, tags.get("number"));
-    }
-
-    @Test
-    public void builderWithStartTimestamp() {
-        shim.buildSpan("one")
-            .withStartTimestamp(113)
-            .startManual()
-            .finish();
-
-        assertEquals(1, mockTracer.finishedSpans().size());
-        assertEquals(113, mockTracer.finishedSpans().get(0).startMicros());
-    }
-
-    @Test
-    public void builderStart() {
-        shim.buildSpan("one").start().finish();
-
-        assertEquals(1, mockTracer.finishedSpans().size());
-        assertEquals("one", mockTracer.finishedSpans().get(0).operationName());
+        assertEquals(captureCount, tags.size());
     }
 }

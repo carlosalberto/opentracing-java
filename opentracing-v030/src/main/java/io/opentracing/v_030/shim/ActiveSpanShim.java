@@ -19,11 +19,14 @@ import io.opentracing.v_030.ActiveSpan;
 
 import java.util.Map;
 
-class ActiveSpanShim implements ActiveSpan, SpanWrapper {
+public class ActiveSpanShim implements ActiveSpan, SpanWrapper {
     final Scope scope;
     final SpanContext context;
 
     public ActiveSpanShim(Scope scope) {
+        if (scope == null)
+            throw new IllegalArgumentException("scope");
+
         this.scope = scope;
         this.context = new SpanContextShim(scope.span().context());
     }

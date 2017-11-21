@@ -13,147 +13,48 @@
  */
 package io.opentracing.v_030.shim;
 
-import io.opentracing.ScopeManager;
 import io.opentracing.Scope;
+import io.opentracing.ScopeManager;
+import io.opentracing.SpanContext;
+import io.opentracing.propagation.Format;
+import io.opentracing.util.AutoFinishScope;
+import io.opentracing.util.AutoFinishScopeManager;
 import io.opentracing.v_030.ActiveSpan;
-import io.opentracing.v_030.BaseSpan;
-import io.opentracing.v_030.Span;
-import io.opentracing.v_030.SpanContext;
-import io.opentracing.v_030.Tracer;
-import io.opentracing.v_030.propagation.Format;
 
-import java.util.Map;
-
-public class TracerShim implements Tracer {
-    final io.opentracing.Tracer tracer;
-
+public class TracerShim extends BaseTracerShim {
     public TracerShim(io.opentracing.Tracer tracer) {
-        checkArgumentNotNull(tracer, "tracer");
+        super(tracer);
 
-        this.tracer = tracer;
+        if (!(tracer.scopeManager() instanceof AutoFinishScopeManager))
+            throw new IllegalArgumentException("tracer.scopeManager");
     }
 
-    void checkArgumentNotNull(Object value, String errorMessage) {
-        if (value == null)
-            throw new IllegalArgumentException(errorMessage);
-    }
-
+    @Override
     protected ActiveSpanShim createActiveSpanShim(Scope scope) {
-        return new ActiveSpanShim(scope);
+        return new AutoFinishActiveSpanShim(scope);
     }
 
-    @Override
-    public ActiveSpan activeSpan() {
-        if (tracer.scopeManager().active() == null)
-            return null;
-
-        return createActiveSpanShim(tracer.scopeManager().active());
-    }
-
-    @Override
-    public ActiveSpan makeActive(Span span) {
-        checkArgumentNotNull(span, "span");
-
-        io.opentracing.Span wrappedSpan = ((SpanWrapper)span).span();
-        return createActiveSpanShim(tracer.scopeManager().activate(wrappedSpan));
-    }
-
-    @Override
-    public SpanBuilder buildSpan(String operationName) {
-        return new SpanBuilderShim(tracer.buildSpan(operationName));
-    }
-
-    @Override
-    public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
-        checkArgumentNotNull(spanContext, "spanContext");
-
-        tracer.inject(((SpanContextShim)spanContext).context(),
-                FormatConverter.toUpstreamFormat(format),
-                FormatConverter.toUpstreamCarrier(format, carrier));
-    }
-
-    @Override
-    public <C> SpanContext extract(Format<C> format, C carrier) {
-        io.opentracing.SpanContext context = tracer.extract(FormatConverter.toUpstreamFormat(format),
-                FormatConverter.toUpstreamCarrier(format, carrier));
-        return new SpanContextShim(context);
-    }
-
-    private final class SpanBuilderShim implements Tracer.SpanBuilder {
-        io.opentracing.Tracer.SpanBuilder builder;
-
-        public SpanBuilderShim(io.opentracing.Tracer.SpanBuilder builder) {
-            this.builder = builder;
+    final static class AutoFinishActiveSpanShim extends ActiveSpanShim {
+        public AutoFinishActiveSpanShim(Scope scope) {
+            super(scope);
         }
 
         @Override
-        public SpanBuilderShim asChildOf(SpanContext parent) {
-            checkArgumentNotNull(parent, "parent");
-
-            builder.asChildOf(((SpanContextShim)parent).context());
-            return this;
+        public Continuation capture() {
+            return new Continuation(((AutoFinishScope)scope()).capture());
         }
 
-        @Override
-        public SpanBuilderShim asChildOf(BaseSpan<?> parent) {
-            checkArgumentNotNull(parent, "parent");
+        private final class Continuation implements ActiveSpan.Continuation {
+            AutoFinishScope.Continuation continuation;
 
-            builder.asChildOf(((SpanWrapper)parent).span());
-            return this;
-        }
+            Continuation(AutoFinishScope.Continuation continuation) {
+                this.continuation = continuation;
+            }
 
-        @Override
-        public SpanBuilderShim addReference(String referenceType, SpanContext referencedContext) {
-            checkArgumentNotNull(referencedContext, "referencedContext");
-
-            builder.addReference(referenceType, ((SpanContextShim)referencedContext).context());
-            return this;
-        }
-
-        @Override
-        public SpanBuilderShim ignoreActiveSpan() {
-            builder.ignoreActiveSpan();
-            return this;
-        }
-
-        @Override
-        public SpanBuilderShim withTag(String key, String value) {
-            builder.withTag(key, value);
-            return this;
-        }
-
-        @Override
-        public SpanBuilderShim withTag(String key, boolean value) {
-            builder.withTag(key, value);
-            return this;
-        }
-
-        @Override
-        public SpanBuilderShim withTag(String key, Number value) {
-            builder.withTag(key, value);
-            return this;
-        }
-
-        @Override
-        public SpanBuilderShim withStartTimestamp(long microseconds) {
-            builder.withStartTimestamp(microseconds);
-            return this;
-        }
-
-        @Override
-        public ActiveSpan startActive() {
-            Scope scope = builder.startActive();
-            return createActiveSpanShim(scope);
-        }
-
-        @Override
-        public Span startManual() {
-            return new SpanShim(builder.startManual());
-        }
-
-        @Override
-        public Span start() {
-            return new SpanShim(builder.start());
+            @Override
+            public ActiveSpanShim activate() {
+                return new AutoFinishActiveSpanShim(continuation.activate());
+            }
         }
     }
 }

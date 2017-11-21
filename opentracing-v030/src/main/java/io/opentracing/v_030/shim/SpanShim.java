@@ -18,7 +18,7 @@ import io.opentracing.v_030.Span;
 
 import java.util.Map;
 
-class SpanShim implements Span, SpanWrapper {
+public class SpanShim implements Span, SpanWrapper {
     final io.opentracing.Span span;
     final SpanContext context;
 

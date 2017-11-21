@@ -13,6 +13,6 @@
  */
 package io.opentracing.v_030.shim;
 
-interface SpanWrapper {
+public interface SpanWrapper {
     io.opentracing.Span span();
 }

@@ -18,7 +18,7 @@ import org.junit.Test;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.mock.MockTracer.Propagator;
-import io.opentracing.util.ThreadLocalScopeManager;
+import io.opentracing.util.AutoFinishScopeManager;
 import io.opentracing.v_030.ActiveSpan;
 import io.opentracing.v_030.Span;
 import io.opentracing.v_030.SpanContext;
@@ -34,7 +34,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 public class ActiveSpanShimTest {
-    private final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
+    private final MockTracer mockTracer = new MockTracer(new AutoFinishScopeManager(),
             Propagator.TEXT_MAP);
     private Tracer shim;
 
