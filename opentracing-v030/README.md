@@ -24,6 +24,7 @@ import io.opentracing.v_030.shim.AutoFinishTracerShim;
 
 io.opentracing.Tracer upstreamTracer = new CustomTracer(..., new AutoFinishScopeManager());
 Tracer tracer = new TracerShim(yourUpstreamTracer);
+
 try (ActiveSpan span = tracer.buildSpan("parent").startActive()) {
     ActiveSpan.Continuation cont = span.capture();
     ...
@@ -46,6 +47,7 @@ public class CustomTracerShim extends BaseTracerShim {
         super(tracer);
     }
 
+    @Override
     public ActiveSpanShim createActiveSpanShim(Scope scope) {
         return CustomActiveSpanShim(scope);
     }
