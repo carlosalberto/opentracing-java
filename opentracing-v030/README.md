@@ -1,7 +1,7 @@
 # OpenTracing-Java 0.30 compatibility layer.
 
 The `opentracing-v030` artifact provides a 0.30 API compatibility layer which comprises:
-1. Exposing all the the 0.30 packages under `io.opentracing.v_030` (`io.opentracin.v_030.propagation`, `io.opentracing.v_30.util`, etc).
+1. Exposing all the the 0.30 packages under `io.opentracing.v_030` (`io.opentracing.v_030.propagation`, `io.opentracing.v_30.util`, etc).
 2. A Shim layer to wrap 0.31 Tracer and expose it under the 0.30 API.
 
 ## Shim Layer
