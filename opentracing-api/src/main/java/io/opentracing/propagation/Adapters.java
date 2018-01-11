@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 The OpenTracing Authors
+ * Copyright 2016-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,7 @@ package io.opentracing.propagation;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
@@ -36,7 +37,7 @@ public final class Adapters {
             throw new IllegalArgumentException("stream cannot be null");
         }
 
-        return new BinaryAdapter(Channels.newChannel(stream));
+        return new BinaryAdapter(stream);
     }
 
     /**
@@ -52,7 +53,8 @@ public final class Adapters {
             throw new IllegalArgumentException("channel cannot be null");
         }
 
-        return new BinaryAdapter(channel);
+        return null;
+        //return new BinaryAdapter(channel);
     }
 
     /**
@@ -68,7 +70,7 @@ public final class Adapters {
             throw new IllegalArgumentException("stream cannot be null");
         }
 
-        return new BinaryAdapter(Channels.newChannel(stream));
+        return new BinaryAdapter(stream);
     }
 
     /**
@@ -84,6 +86,30 @@ public final class Adapters {
             throw new IllegalArgumentException("channel cannot be null");
         }
 
-        return new BinaryAdapter(channel);
+        return null;
+        //return new BinaryAdapter(channel);
     }
+
+    /*
+    static class BinaryStreamAdapter implements Binary {
+        OutputStream outputStream;
+
+        public BinaryStreamAdapter(OutputStream outputStream) {
+            this.outputStream = outputStream;
+        }
+
+        @Override
+        public int write(ByteBuffer buffer) throws IOException {
+            int rv = buffer.remaining();
+            byte[] b = new byte[rv];
+            buffer.get(b);
+            outputStream.write(b);
+            return rv;
+        }
+
+        @Override
+        public int read(ByteBuffer buffer) throws IOException {
+            return -1;
+        }
+    }*/
 }

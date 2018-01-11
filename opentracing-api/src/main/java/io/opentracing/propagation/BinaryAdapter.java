@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 The OpenTracing Authors
+ * Copyright 2016-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,56 +14,68 @@
 package io.opentracing.propagation;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 
 /**
  * BinaryAdapter is a built-in carrier for Tracer.inject() and Tracer.extract(). BinaryAdapter
- * is backed up by either a ReadableByteChannel or a WritableByteChannel, depending
+ * is backed up by either an OutputStream or an InputStream, depending
  * on whether it's defined as injection or extraction, respectively.
  */
 final class BinaryAdapter implements Binary {
-    private final ReadableByteChannel readChannel;
-    private final WritableByteChannel writeChannel;
+    private final OutputStream outputStream;
+    private final InputStream inputStream;
 
     /**
      * Create an outbound BinaryAdapter backed by the specified write channel.
      */
-    BinaryAdapter(WritableByteChannel writeChannel) {
-        this.writeChannel = writeChannel;
-        this.readChannel = null;
+    BinaryAdapter(OutputStream outputStream) {
+        this.outputStream = outputStream;
+        this.inputStream = null;
     }
 
     /**
      * Create an inbound BinaryAdapter backed by the specified read channel.
      */
-    BinaryAdapter(ReadableByteChannel readChannel) {
-        this.readChannel = readChannel;
-        this.writeChannel = null;
+    BinaryAdapter(InputStream inputStream) {
+        this.inputStream = inputStream;
+        this.outputStream = null;
     }
 
-    ReadableByteChannel readChannel() {
-        return readChannel;
+    OutputStream outputStream() {
+        return outputStream;
     }
 
-    WritableByteChannel writeChannel() {
-        return writeChannel;
+    InputStream inputStream() {
+        return inputStream;
     }
 
-    public int write(ByteBuffer buffer) throws IOException {
-        if (writeChannel == null) {
+    public void write(ByteBuffer buffer) throws IOException {
+        if (outputStream == null) {
             throw new UnsupportedOperationException();
         }
-
-        return writeChannel.write(buffer);
+        byte[] b = new byte[buffer.remaining()];
+        buffer.get(b);
+        outputStream.write(b);
     }
 
     public int read(ByteBuffer buffer) throws IOException {
-        if (readChannel == null) {
+        if (inputStream == null) {
             throw new UnsupportedOperationException();
         }
+        // wait, I think InputStream has available?, right?
+        // in that case we may want to optimize this.
+        // But which one to choose? remaining() or available()?
+        if (buffer.remaining() == 0)
+            return 0;
 
-        return readChannel.read(buffer);
+        if (inputStream.available() <= 0)
+            return inputStream.available();
+
+        byte[] b = new byte[buffer.remaining()];
+        int available = inputStream.read(b);
+        buffer.put(b, 0, available);
+        return available;
     }
 }

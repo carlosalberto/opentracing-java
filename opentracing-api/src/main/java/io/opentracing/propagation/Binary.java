@@ -43,7 +43,7 @@ public interface Binary {
      *
      * @return The number of bytes written, possibly zero.
      */
-    int write(ByteBuffer buffer) throws IOException;
+    void write(ByteBuffer buffer) throws IOException;
 
     /**
      * Reads a sequence of bytes into the given buffer.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 The OpenTracing Authors
+ * Copyright 2016-2018 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -28,6 +28,7 @@ import static org.junit.Assert.assertNotNull;
 
 public class AdaptersTest {
 
+    /*
     @Test
     public void testExtractBinaryStream() {
         byte[] ctx = new byte[0];
@@ -74,5 +75,5 @@ public class AdaptersTest {
     @Test(expected = IllegalArgumentException.class)
     public void testInjectNullChannel() {
         Adapters.injectBinary((WritableByteChannel)null);
-    }
+    }*/
 }
